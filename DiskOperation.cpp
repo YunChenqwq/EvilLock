@@ -1,5 +1,47 @@
 #include"DiskOperation.h"
 using namespace std;
+struct MBR {
+	unsigned char codeArea[446]; // 引导代码区域
+	struct Partition {
+		unsigned char status;    // 分区状态
+		unsigned char start_head; // 起始磁头号
+		unsigned char start_sec;  // 起始扇区号
+		unsigned char start_cyl;  // 起始柱面号
+		unsigned char type;       // 分区类型
+		unsigned char end_head;   // 结束磁头号
+		unsigned char end_sec;    // 结束扇区号
+		unsigned char end_cyl;    // 结束柱面号
+		unsigned int start_lba;   // 分区起始地址的LBA
+		unsigned int size;        // 分区大小，以扇区数表示
+	} partition[4];
+	unsigned short signature; // MBR签名（0xAA55）
+};
+struct GPTHeader {
+	char signature[8];          // GPT头部签名（"EFI PART"）
+	uint32_t revision;          // GPT版本号
+	uint32_t header_size;       // GPT头部大小
+	uint32_t header_crc32;      // GPT头部CRC32校验码
+	uint32_t reserved1;         // 保留字段（必须为0）
+	uint64_t current_lba;       // GPT头部所在LBA地址
+	uint64_t backup_lba;        // GPT备份头部所在LBA地址
+	uint64_t first_lba;         // 第一个分区条目所在LBA地址
+	uint64_t last_lba;          // 最后一个分区条目所在LBA地址
+	uint8_t disk_guid[16];      // 磁盘GUID
+	uint64_t partition_array_lba; // 分区表项数组所在LBA地址
+	uint32_t partition_count;   // 分区数量
+	uint32_t partition_entry_size; // 分区表项大小
+	uint32_t partition_array_crc32; // 分区表项数组CRC32校验码
+};
+
+// GPT分区表项结构体
+struct GPTPartitionEntry {
+	uint8_t type_guid[16];      // 分区类型GUID
+	uint8_t partition_guid[16]; // 分区GUID
+	uint64_t start_lba;         // 分区起始LBA地址
+	uint64_t end_lba;           // 分区结束LBA地址
+	uint64_t attributes;        // 分区属性
+	unsigned char name[72];     // 分区名称
+};
 BOOL SCSIBuild10CDB(PSCSI_PASS_THROUGH_DIRECT srb, ULONGLONG offset, ULONG length, BOOLEAN Write) {
 	if (!srb || offset >= 0x20000000000 || length < 1)
 		return FALSE;
