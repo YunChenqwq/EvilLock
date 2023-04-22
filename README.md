@@ -1,3 +1,3 @@
-# EvilLock
 EvilLock 是一个恶意软件库，适配易语言和c++。使用ED2K nasm16bit VC开发
+目前还在开发中，没有成品
 企鹅群:790319489
