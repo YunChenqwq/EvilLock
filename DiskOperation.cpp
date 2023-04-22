@@ -129,6 +129,7 @@ BOOL SCSISectorIO(HANDLE hDrive, ULONGLONG offset, LPBYTE buffer, UINT buffSize,
 		return TRUE;
 	}
 }
+/*获取驱动器句柄*/
 BOOL GetPhysicalDriveHandle(HANDLE& handle, int DriveNumber)
 {
 	char drivestr[512];
@@ -182,4 +183,70 @@ int GetPhysicalDriveNumber()
 		CloseHandle(hFile);
 	}
 	return drivenumber;
+}
+/*获取硬盘分区类型*/
+string GetPartitiontype(HANDLE hDevice)
+{
+		int nDiskBufferSize = sizeof(PARTITION_INFORMATION_EX);
+		PARTITION_INFORMATION_EX* lpDiskPartinfo_ex = (PARTITION_INFORMATION_EX*)malloc(nDiskBufferSize);
+		DWORD nDiskBytesRead = 0;
+		memset(lpDiskPartinfo_ex, 0, sizeof(lpDiskPartinfo_ex));
+		BOOL Ret = FALSE;
+		Ret = DeviceIoControl(hDevice, IOCTL_DISK_GET_PARTITION_INFO_EX, NULL, 0, lpDiskPartinfo_ex, nDiskBufferSize, &nDiskBytesRead, NULL);
+
+		if (!Ret)
+		{
+			int e = GetLastError();
+			return strerror(e);
+		}
+		if (lpDiskPartinfo_ex->PartitionStyle == PARTITION_STYLE_MBR)
+		{
+			return "MBR";
+		}
+		else if (lpDiskPartinfo_ex->PartitionStyle == PARTITION_STYLE_GPT)
+		{
+			return "GPT";
+		}
+		else if (lpDiskPartinfo_ex->PartitionStyle == PARTITION_STYLE_RAW)
+		{
+			return "RAW";
+		}
+		free(lpDiskPartinfo_ex);
+		lpDiskPartinfo_ex = NULL;
+}
+int GetSystemDiskPhysicalNumber()
+{
+	char sysPath[128];
+	char drive[8];
+	char volName[128];
+	DWORD len, flags;
+	int number;
+
+	// 获取系统文件夹路径
+	DWORD ret = GetSystemDirectory(sysPath, sizeof(sysPath));
+	if (ret == 0)
+	{
+		// fprintf(stderr, "GetSystemDirectory() Error: %ld\n", GetLastError());
+		return -1;
+	}
+
+	// 提取系统文件夹中的盘符
+	strncpy(drive, sysPath, 3);
+	drive[3] = '\0';
+
+	// 获取系统盘对应的挂载点
+	if (!GetVolumeNameForVolumeMountPoint(drive, volName, sizeof(volName)))
+	{
+		// fprintf(stderr, "GetVolumeNameForVolumeMountPoint() Error: %ld\n", GetLastError());
+		return -1;
+	}
+
+	// 获取挂载点对应的卷标信息
+	if (!GetVolumeInformation(volName, NULL, 0, reinterpret_cast<LPDWORD>(&number), &len, &flags, NULL, 0))
+	{
+		//fprintf(stderr, "GetVolumeInformation() Error: %ld\n", GetLastError());
+		return -1;
+	}
+
+	return number;
 }

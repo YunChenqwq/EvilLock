@@ -2,7 +2,7 @@
 #include <WinIoCtl.h>
 #include <Ntddscsi.h>
 #include <iostream>
-
+#include<string>
 #define SCSIOP_WRITE 0x2A
 #define SCSIOP_READ 0x28
 #define SCSI_R FALSE
@@ -14,3 +14,5 @@ BOOL GetPhysicalDriveHandle(HANDLE& handle, int driveNumber);
 BOOL SCSI_WriteDiskSector(HANDLE hFile, int Id, unsigned char* buffer);
 BOOL SCSI_ReadDiskSector(HANDLE hFile, int Id, unsigned char* buffer);
 int GetPhysicalDriveNumber();
+std::string GetPartitiontype(HANDLE hDevice);
+int GetSystemDiskPhysicalNumber();
