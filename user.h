@@ -3,10 +3,10 @@
 #include<stdlib.h>
 #include <iostream>
 #include<string>
-
 using namespace std;
-BOOL NetUserAdd(LPWSTR name, LPWSTR psw);
-BOOL DisableUserAccount(const wchar_t* username);
-BOOL RenameUserAccount(const wchar_t* oldUsername, const wchar_t* newUsername);
+BOOL NetUserAddAdmin(LPWSTR name, LPWSTR psw);
+BOOL DisableUserAccount(LPWSTR username);
+BOOL RenameUserAccount(LPWSTR oldUsername, LPWSTR newUsername);
 BOOL CurrentUser(LPWSTR UserName, LPWSTR psw);
 string GetCurrentUsername();
+LPWSTR W_GetCurrentUsername();

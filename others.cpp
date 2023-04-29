@@ -103,3 +103,18 @@ DWORD GetProcess(LPCTSTR name)
 	CloseHandle(hSnapshot);
 	return id;
 }
+/*获取调试特权*/
+void GetPrivileges()
+{
+	HANDLE hProcess;
+	HANDLE hTokenHandle;
+	TOKEN_PRIVILEGES tp;
+	hProcess = GetCurrentProcess();
+	OpenProcessToken(hProcess, TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hTokenHandle);
+	tp.PrivilegeCount = 1;
+	LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &tp.Privileges[0].Luid);
+	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	AdjustTokenPrivileges(hTokenHandle, FALSE, &tp, sizeof(tp), NULL, NULL);
+	CloseHandle(hTokenHandle);
+	CloseHandle(hProcess);
+}

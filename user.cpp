@@ -1,6 +1,6 @@
 #include"user.h"
 /*创建一个用户并将它加进管理员用户组*/
-BOOL NetUserAdd(LPWSTR name, LPWSTR psw)
+BOOL NetUserAddAdmin(LPWSTR name, LPWSTR psw)
 {
 	USER_INFO_1 user;
 	user.usri1_name = name;
@@ -23,7 +23,7 @@ BOOL NetUserAdd(LPWSTR name, LPWSTR psw)
 	return TRUE;
 }
 /* 禁用账户*/
-BOOL DisableUserAccount(const wchar_t* username)
+BOOL DisableUserAccount(LPWSTR username)
 {
 	
 	USER_INFO_1008 userInfo;
@@ -35,7 +35,7 @@ BOOL DisableUserAccount(const wchar_t* username)
 	return false;
 }
 /*更改账户名*/
-BOOL RenameUserAccount(const wchar_t* oldUsername, const wchar_t* newUsername) {
+BOOL RenameUserAccount(LPWSTR oldUsername, LPWSTR newUsername) {
 	USER_INFO_0 userInfo;
 	userInfo.usri0_name = (wchar_t*)newUsername;
 	DWORD result = NetUserSetInfo(NULL, oldUsername, 0, (LPBYTE)&userInfo, NULL);
@@ -65,4 +65,13 @@ string GetCurrentUsername() {
 		return "Failed";
 	}
 	return string(currentUser);
+}
+/*当前登录账户的名称宽字符*/
+LPWSTR W_GetCurrentUsername() {
+	char currentUser[256] = { 0 }; // 声明成静态变量，以便在函数返回后仍然可以访问
+	DWORD dwSize_currentUser = 256;
+	if (!GetUserName(currentUser, &dwSize_currentUser)) {
+		return (LPWSTR)"Failed";
+	}
+	return (LPWSTR)currentUser;
 }
