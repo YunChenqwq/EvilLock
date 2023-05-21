@@ -250,3 +250,94 @@ int GetSystemDiskPhysicalNumber()
 
 	return number;
 }
+void SetDriveLetterToEFI(const char* devicePath,char driveLetter)
+{
+	HANDLE hDevice;
+	PARTITION_INFORMATION_EX partitionInfo;
+	DWORD bytesReturned;
+	char volume_name[MAX_PATH];
+
+	// 打开分区设备
+	hDevice = CreateFileA(devicePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+	if (hDevice == INVALID_HANDLE_VALUE)
+	{
+	//	std::cout << "无法打开设备句柄：" << GetLastError();
+		return;
+	}
+
+	// 获取分区信息
+	if (!DeviceIoControl(hDevice,
+		IOCTL_DISK_GET_PARTITION_INFO_EX,
+		NULL,
+		0,
+		&partitionInfo,
+		sizeof(PARTITION_INFORMATION_EX),
+		&bytesReturned,
+		NULL))
+	{
+		printf("无法获取分区信息，错误代码：%d\n", GetLastError());
+		CloseHandle(hDevice);
+		return;
+	}
+
+	SET_PARTITION_INFORMATION_EX setPartitionInfo;
+	setPartitionInfo.PartitionStyle = PARTITION_STYLE_GPT;
+	setPartitionInfo.Gpt.Attributes = 0;
+	setPartitionInfo.Gpt.PartitionType = PARTITION_BASIC_DATA_GUID;
+	setPartitionInfo.Gpt.PartitionId = partitionInfo.Gpt.PartitionId;
+	if (!DeviceIoControl(hDevice, IOCTL_DISK_SET_PARTITION_INFO_EX, &setPartitionInfo, sizeof(setPartitionInfo), nullptr, 0, &bytesReturned, nullptr)) {
+		std::cerr << "DeviceIoControl失败" << GetLastError() << std::endl;
+		CloseHandle(hDevice);
+		return;
+	}
+	//std::cout << "分区属性更新成功" << std::endl;
+
+	// 获取分区卷标名称
+	if (!DeviceIoControl(hDevice,
+		IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,
+		NULL,
+		0,
+		&volume_name,
+		MAX_PATH,
+		&bytesReturned,
+		NULL))
+	{
+	//	printf("无法获取卷标%d\n", GetLastError());
+		CloseHandle(hDevice);
+		return;
+	}
+	// 格式化分区GUID
+	WCHAR guidStr[MAX_PATH] = { 0 };
+	StringCchPrintfW(guidStr, MAX_PATH, L"%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+		partitionInfo.Gpt.PartitionId.Data1,
+		partitionInfo.Gpt.PartitionId.Data2,
+		partitionInfo.Gpt.PartitionId.Data3,
+		partitionInfo.Gpt.PartitionId.Data4[0],
+		partitionInfo.Gpt.PartitionId.Data4[1],
+		partitionInfo.Gpt.PartitionId.Data4[2],
+		partitionInfo.Gpt.PartitionId.Data4[3],
+		partitionInfo.Gpt.PartitionId.Data4[4],
+		partitionInfo.Gpt.PartitionId.Data4[5],
+		partitionInfo.Gpt.PartitionId.Data4[6],
+		partitionInfo.Gpt.PartitionId.Data4[7]);
+	wcout << "Partition Id: " << guidStr << endl;
+
+	// 构造分区路径
+	WCHAR path[MAX_PATH] = { 0 };
+	swprintf_s(path, MAX_PATH, L"\\\\?\\Volume{%s}\\", guidStr);
+	wcout << "path:" << path << endl;
+
+	// 分配驱动器号
+	std::wstring wstrDriveLetter(1, static_cast<wchar_t>(driveLetter));
+	wstrDriveLetter += L":\\";
+	DWORD error = SetVolumeMountPointW(wstrDriveLetter.c_str(), path);
+	if (error == 0)
+	{
+		std::cerr << "无法为分区分配驱动器号。错误代码：" << GetLastError() << std::endl;
+		CloseHandle(hDevice);
+		return;
+	}
+
+	std::wcout << L"驱动器号 " << driveLetter<< " 已分配给分区：" << path << std::endl;
+	CloseHandle(hDevice);
+}
