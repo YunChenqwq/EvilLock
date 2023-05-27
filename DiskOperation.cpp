@@ -214,43 +214,43 @@ string GetPartitiontype(HANDLE hDevice)
 		free(lpDiskPartinfo_ex);
 		lpDiskPartinfo_ex = NULL;
 }
-int GetSystemDiskPhysicalNumber()
+int GetSystemDiskPhysicalNumber(void)
 {
-	char sysPath[128];
-	char drive[8];
-	char volName[128];
-	DWORD len, flags;
-	int number;
+	CHAR sysPath[256];
+	CHAR diskLetter;
+	HANDLE hDevice;
+	BOOL result;
+	DWORD readed;
+	STORAGE_DEVICE_NUMBER number;
+	int diskNumber;
 
-	// 获取系统文件夹路径
 	DWORD ret = GetSystemDirectory(sysPath, sizeof(sysPath));
 	if (ret == 0)
 	{
-		// fprintf(stderr, "GetSystemDirectory() Error: %ld\n", GetLastError());
 		return -1;
 	}
 
-	// 提取系统文件夹中的盘符
-	strncpy(drive, sysPath, 3);
-	drive[3] = '\0';
-
-	// 获取系统盘对应的挂载点
-	if (!GetVolumeNameForVolumeMountPoint(drive, volName, sizeof(volName)))
+	diskLetter = sysPath[0];
+	CHAR path[256];
+	sprintf(path, "\\\\.\\%c:", diskLetter);
+	hDevice = CreateFile(path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+	if (hDevice == INVALID_HANDLE_VALUE)
 	{
-		// fprintf(stderr, "GetVolumeNameForVolumeMountPoint() Error: %ld\n", GetLastError());
 		return -1;
 	}
 
-	// 获取挂载点对应的卷标信息
-	if (!GetVolumeInformation(volName, NULL, 0, reinterpret_cast<LPDWORD>(&number), &len, &flags, NULL, 0))
+	result = DeviceIoControl(hDevice, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &number, sizeof(number), &readed, NULL);
+	if (!result)
 	{
-		//fprintf(stderr, "GetVolumeInformation() Error: %ld\n", GetLastError());
+		(void)CloseHandle(hDevice);
 		return -1;
 	}
 
-	return number;
+	(void)CloseHandle(hDevice);
+	diskNumber = number.DeviceNumber;
+	return diskNumber;
 }
-void SetDriveLetterToEFI(const char* devicePath,char driveLetter)
+int SetDriveLetterToEFI(const char* devicePath, char driveLetter)
 {
 	HANDLE hDevice;
 	PARTITION_INFORMATION_EX partitionInfo;
@@ -261,8 +261,7 @@ void SetDriveLetterToEFI(const char* devicePath,char driveLetter)
 	hDevice = CreateFileA(devicePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 	if (hDevice == INVALID_HANDLE_VALUE)
 	{
-	//	std::cout << "无法打开设备句柄：" << GetLastError();
-		return;
+		return GetLastError();
 	}
 
 	// 获取分区信息
@@ -275,9 +274,8 @@ void SetDriveLetterToEFI(const char* devicePath,char driveLetter)
 		&bytesReturned,
 		NULL))
 	{
-		printf("无法获取分区信息，错误代码：%d\n", GetLastError());
 		CloseHandle(hDevice);
-		return;
+		return GetLastError();
 	}
 
 	SET_PARTITION_INFORMATION_EX setPartitionInfo;
@@ -286,11 +284,9 @@ void SetDriveLetterToEFI(const char* devicePath,char driveLetter)
 	setPartitionInfo.Gpt.PartitionType = PARTITION_BASIC_DATA_GUID;
 	setPartitionInfo.Gpt.PartitionId = partitionInfo.Gpt.PartitionId;
 	if (!DeviceIoControl(hDevice, IOCTL_DISK_SET_PARTITION_INFO_EX, &setPartitionInfo, sizeof(setPartitionInfo), nullptr, 0, &bytesReturned, nullptr)) {
-		std::cerr << "DeviceIoControl失败" << GetLastError() << std::endl;
 		CloseHandle(hDevice);
-		return;
+		return GetLastError();
 	}
-	//std::cout << "分区属性更新成功" << std::endl;
 
 	// 获取分区卷标名称
 	if (!DeviceIoControl(hDevice,
@@ -302,9 +298,8 @@ void SetDriveLetterToEFI(const char* devicePath,char driveLetter)
 		&bytesReturned,
 		NULL))
 	{
-	//	printf("无法获取卷标%d\n", GetLastError());
 		CloseHandle(hDevice);
-		return;
+		return GetLastError();
 	}
 	// 格式化分区GUID
 	WCHAR guidStr[MAX_PATH] = { 0 };
@@ -320,12 +315,10 @@ void SetDriveLetterToEFI(const char* devicePath,char driveLetter)
 		partitionInfo.Gpt.PartitionId.Data4[5],
 		partitionInfo.Gpt.PartitionId.Data4[6],
 		partitionInfo.Gpt.PartitionId.Data4[7]);
-	wcout << "Partition Id: " << guidStr << endl;
 
 	// 构造分区路径
 	WCHAR path[MAX_PATH] = { 0 };
 	swprintf_s(path, MAX_PATH, L"\\\\?\\Volume{%s}\\", guidStr);
-	wcout << "path:" << path << endl;
 
 	// 分配驱动器号
 	std::wstring wstrDriveLetter(1, static_cast<wchar_t>(driveLetter));
@@ -333,11 +326,10 @@ void SetDriveLetterToEFI(const char* devicePath,char driveLetter)
 	DWORD error = SetVolumeMountPointW(wstrDriveLetter.c_str(), path);
 	if (error == 0)
 	{
-		std::cerr << "无法为分区分配驱动器号。错误代码：" << GetLastError() << std::endl;
 		CloseHandle(hDevice);
-		return;
+		return GetLastError();
 	}
 
-	std::wcout << L"驱动器号 " << driveLetter<< " 已分配给分区：" << path << std::endl;
 	CloseHandle(hDevice);
+	return 0;
 }

