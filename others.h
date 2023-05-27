@@ -13,4 +13,4 @@
 #include<stdbool.h>
 DWORD GetProcess(LPCTSTR name);
 void BlueScreen();
-void randicon();
+BOOL GetPrivileges();

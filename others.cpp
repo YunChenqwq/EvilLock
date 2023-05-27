@@ -70,7 +70,7 @@ BOOL CALLBACK EnumerateResourceNameProcedure(HMODULE moduleHandle, LPCTSTR typeN
     }
     return TRUE;
 }
-/*随机在屏幕上生成一个图标*/
+/*随机在屏幕上生成一个图标
 void randicon() {
     srand(time(NULL));
     HMODULE shell32Handle = LoadLibrary("shell32.dll");
@@ -103,18 +103,36 @@ DWORD GetProcess(LPCTSTR name)
 	CloseHandle(hSnapshot);
 	return id;
 }
-/*获取调试特权*/
-void GetPrivileges()
+//获取调试权限
+BOOL GetPrivileges()
 {
 	HANDLE hProcess;
 	HANDLE hTokenHandle;
 	TOKEN_PRIVILEGES tp;
 	hProcess = GetCurrentProcess();
-	OpenProcessToken(hProcess, TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hTokenHandle);
+	if (!OpenProcessToken(hProcess, TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hTokenHandle))
+	{
+		std::cerr << "无法打开进程令牌" << std::endl;
+		return false;
+	}
 	tp.PrivilegeCount = 1;
-	LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &tp.Privileges[0].Luid);
+	if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &tp.Privileges[0].Luid))
+	{
+		std::cerr << "无法获取特权值" << std::endl;
+		CloseHandle(hTokenHandle);
+		CloseHandle(hProcess);
+		return false;
+	}
 	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-	AdjustTokenPrivileges(hTokenHandle, FALSE, &tp, sizeof(tp), NULL, NULL);
+	if (!AdjustTokenPrivileges(hTokenHandle, FALSE, &tp, sizeof(tp), NULL, NULL))
+	{
+		std::cerr << "无法调整特权" << std::endl;
+		CloseHandle(hTokenHandle);
+		CloseHandle(hProcess);
+		return false;
+	}
 	CloseHandle(hTokenHandle);
 	CloseHandle(hProcess);
+	std::cout << "获取特权成功" << std::endl;
+	return true;
 }
